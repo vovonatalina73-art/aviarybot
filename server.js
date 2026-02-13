@@ -30,9 +30,13 @@ const ffmpegPath = require('ffmpeg-static');
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
-if (!MONGO_URI) {
-    console.error("CRITICAL: MONGO_URI is not defined in environment variables.");
-} else {
+
+// Function to initialize MongoDB
+async function initDB() {
+    if (!MONGO_URI) {
+        console.error("CRITICAL: MONGO_URI is not defined.");
+        return;
+    }
     try {
         await mongoose.connect(MONGO_URI);
         console.log('Connected to MongoDB');
@@ -814,8 +818,11 @@ app.get('/api/ping', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Initialize DB then Client
+    await initDB();
     client.initialize();
 
     // KEEP-ALIVE MECHANISM
