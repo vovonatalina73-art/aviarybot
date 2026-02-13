@@ -32,11 +32,13 @@ const ffmpegPath = require('ffmpeg-static');
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
     console.error("CRITICAL: MONGO_URI is not defined in environment variables.");
-    // We do not crash, but DB functions will fail.
 } else {
-    mongoose.connect(MONGO_URI)
-        .then(() => console.log('Connected to MongoDB'))
-        .catch(err => console.error('MongoDB Connection Error:', err));
+    try {
+        await mongoose.connect(MONGO_URI);
+        console.log('Connected to MongoDB');
+    } catch (err) {
+        console.error('MongoDB Connection Error:', err);
+    }
 }
 
 ffmpeg.setFfmpegPath(ffmpegPath);
