@@ -16,7 +16,9 @@ import { StartNode, ContentNode, MenuNode, DelayNode, ImageNode, VideoNode, Audi
 import DeletableEdge from './CustomEdges';
 import QRCodeModal from './QRCodeModal';
 import LeadsDashboard from './LeadsDashboard';
+import LeadsDashboard from './LeadsDashboard';
 import FinancialDashboard from './FinancialDashboard';
+import { API_URL } from '../config';
 
 const nodeTypes = {
     start: StartNode,
@@ -68,7 +70,7 @@ const FlowBuilderContent = () => {
     React.useEffect(() => {
         const fetchFlow = async () => {
             try {
-                const response = await fetch('http://localhost:3001/api/flow');
+                const response = await fetch(`${API_URL}/api/flow`);
                 const flow = await response.json();
                 if (flow) {
                     // Re-attach handlers to loaded nodes
@@ -145,7 +147,7 @@ const FlowBuilderContent = () => {
             console.log('Flow saved:', flow);
 
             try {
-                const response = await fetch('http://localhost:3001/api/save-flow', {
+                const response = await fetch(`${API_URL}/api/save-flow`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, ShoppingBag, PieChart, Save } from 'lucide-react';
+import { API_URL } from '../config';
 
 const FinancialDashboard = () => {
     const [metrics, setMetrics] = useState({
@@ -15,7 +16,7 @@ const FinancialDashboard = () => {
 
     const fetchFinancials = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/financials');
+            const response = await fetch(`${API_URL}/api/financials`);
             const data = await response.json();
             setMetrics(data);
             setLoading(false);
@@ -27,7 +28,7 @@ const FinancialDashboard = () => {
 
     const handleSave = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/financials', {
+            const response = await fetch(`${API_URL}/api/financials`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(metrics)

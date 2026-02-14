@@ -3,7 +3,11 @@ import { QRCodeSVG } from 'qrcode.react';
 import io from 'socket.io-client';
 import { X, CheckCircle, Loader2 } from 'lucide-react';
 
-const socket = io('http://localhost:3001');
+import { API_URL } from '../config';
+
+const socket = io(API_URL, {
+    transports: ['websocket', 'polling']
+});
 
 const QRCodeModal = ({ isOpen, onClose }) => {
     const [qrCode, setQrCode] = useState('');

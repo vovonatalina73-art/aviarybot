@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Search, MessageSquare, User } from 'lucide-react';
+import { API_URL } from '../config';
 
 const LeadsDashboard = () => {
     const [leads, setLeads] = useState([]);
@@ -14,7 +15,7 @@ const LeadsDashboard = () => {
 
     const fetchLeads = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/leads');
+            const response = await fetch(`${API_URL}/api/leads`);
             const data = await response.json();
             // Sort by last interaction (newest first)
             const sorted = data.sort((a, b) => new Date(b.lastInteraction) - new Date(a.lastInteraction));
@@ -31,7 +32,7 @@ const LeadsDashboard = () => {
         setLeads(leads.map(l => l.chatId === chatId ? { ...l, status: newStatus } : l));
 
         try {
-            await fetch(`http://localhost:3001/api/leads/${chatId}/status`, {
+            await fetch(`${API_URL}/api/leads/${chatId}/status`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
@@ -167,7 +168,7 @@ const LeadsDashboard = () => {
                                                         onClick={async () => {
                                                             if (confirm(`Disparar fluxo para ${lead.phone}?`)) {
                                                                 try {
-                                                                    await fetch('http://localhost:3001/api/trigger-flow', {
+                                                                    await fetch(`${API_URL}/api/trigger-flow`, {
                                                                         method: 'POST',
                                                                         headers: { 'Content-Type': 'application/json' },
                                                                         body: JSON.stringify({ chatId: lead.chatId })
