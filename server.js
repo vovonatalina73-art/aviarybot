@@ -125,7 +125,7 @@ const client = new Client({
         backupSyncIntervalMs: 300000
     }),
     puppeteer: {
-        headless: true,
+        headless: 'true', // As string for some environments
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -133,8 +133,22 @@ const client = new Client({
             '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
-            '--single-process', // Important for some cloud environments
-            '--disable-gpu'
+            '--single-process',
+            '--disable-gpu',
+            '--disable-extensions',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-default-apps',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--autoplay-policy=user-gesture-required',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-notifications',
+            '--disable-background-networking',
+            '--disable-breakpad',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--disable-sync'
         ],
         timeout: 60000
     }
