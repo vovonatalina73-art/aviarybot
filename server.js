@@ -19,6 +19,7 @@ const __dirname = dirname(__filename);
 
 const { Client, RemoteAuth, MessageMedia, Poll } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+import { getAiResponse } from './src/services/ai/GroqService.js';
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -170,6 +171,10 @@ client.on('qr', (qr) => {
 client.on('ready', () => {
     console.log('Client is ready!');
     io.emit('ready');
+
+    // Initialize services
+    const { initRemarketing } = require('./src/services/marketing/RemarketingService.js');
+    initRemarketing(client);
 });
 
 client.on('authenticated', () => {
@@ -206,7 +211,35 @@ client.on('message', async msg => {
         return;
     }
 
-    // --- LEADS & BLOCKING LOGIC ---
+    // --- DOCUMENT HANDLING (PDF PAYMENTS) ---
+    if (msg.hasMedia) {
+        try {
+            const media = await msg.downloadMedia();
+            if (media && media.mimetype === 'application/pdf') {
+                console.log(`[PAYMENT] Received PDF from ${chatId}`);
+                const { validatePayment } = require('./src/services/payments/PaymentValidator.js');
+
+                const buffer = Buffer.from(media.data, 'base64');
+                const paymentInfo = await validatePayment(buffer);
+
+                if (paymentInfo.isValid) {
+                    console.log(`[PAYMENT] Validated: R$${paymentInfo.value} on ${paymentInfo.date}`);
+                    await client.sendMessage(chatId, `✅ *Pagamento Recebido!* \n\nValor: R$ ${paymentInfo.value} \nData: ${paymentInfo.date} \n\nObrigado! Estamos processando seu pedido.`);
+
+                    // Here we would update the Lead status or trigger a flow
+                    // e.g. lead.status = 'paid'; lead.save();
+                } else {
+                    console.log(`[PAYMENT] Could not validate PDF.`);
+                    await client.sendMessage(chatId, `⚠️ Recebi seu PDF, mas não consegui identificar os dados do pagamento automaticamente. Um atendente irá verificar.`);
+                }
+                return; // Stop further processing for this message
+            }
+        } catch (err) {
+            console.error('[PAYMENT] Error processing media:', err);
+        }
+    }
+    // ----------------------------------------
+
     // --- LEADS & BLOCKING LOGIC ---
     const now = Date.now();
     let lead = await Lead.findOne({ chatId: chatId });
@@ -246,12 +279,36 @@ client.on('message', async msg => {
     await lead.save();
     // -----------------------------
 
+    // ... (inside client.on('message'))
+
     if (!sessions[chatId]) {
         // --- SESSION LOCKING ---
         if (sessionLocks.has(chatId)) {
             console.log(`Ignoring message from ${chatId} (Session start locked - race condition prevention)`);
             return;
         }
+
+        // --- AI FALLLBACK & FLOW START LOGIC ---
+        const startKeywords = ['oi', 'olá', 'ola', 'menu', 'inicio', 'início', 'começar', 'start'];
+        const isStartKeyword = startKeywords.some(k => msg.body.toLowerCase().includes(k));
+
+        // If lead exists and it's NOT a start command, try AI first
+        if (lead && lead.status !== 'new' && !isStartKeyword) {
+            console.log(`[AI] Handover for ${chatId}: "${msg.body}"`);
+
+            // Send "typing" state
+            const chat = await msg.getChat();
+            await chat.sendStateTyping();
+
+            // Get AI Response
+            // We pass an empty context for now, or we could fetch recent messages from DB if we stored them
+            const aiResponse = await getAiResponse(chatId, msg.body, []);
+
+            await client.sendMessage(chatId, aiResponse);
+            return;
+        }
+
+        // Otherwise (New lead OR Start Keyword), Start Flow
         sessionLocks.add(chatId);
         setTimeout(() => sessionLocks.delete(chatId), 2000); // Release lock after 2s
         // -----------------------
@@ -351,17 +408,53 @@ client.on('message', async msg => {
                 }
 
             } else {
-                // If NOT a menu, ignore the message.
-                // The bot is likely processing an auto-advance node (content, delay, media).
+                // If NOT a menu...
+                // Check if it's an AI-enabled node or fallback
+                // For now, let's keep the flow strict.
                 console.log(`Ignoring message from ${chatId} because bot is in state: ${currentNode.type}`);
                 return;
             }
         } else {
             // No edges from this node? End of flow?
+            // If flow ended, maybe we want to enable AI here? 
+            // For now, just clear session.
             delete sessions[chatId];
         }
     }
 });
+
+// --- AI FALLBACK HANDLER ---
+// If message is NOT part of an active flow session, handle with AI
+// This requires moving the "sessions[chatId]" check logic.
+// But based on current architecture, if !sessions[chatId], it starts the flow.
+// We need a specific condition: "If start node exists but user says something that isn't a trigger?"
+// OR: "If flow finishes, next message goes to AI?"
+
+// Let's implement a simple "Direct AI" command for testing first, or integration within a specific Node type later.
+// For Phase 1 per plan: "Integração com LLM... se não houver correspondência".
+
+// Current logic:
+// 1. Session exists? -> Continue flow.
+// 2. No session? -> Start flow (Lead creation + Start Node).
+
+// To make AI work as fallback, we need to change #2:
+// 2. No session? -> Check if message is a "start keyword".
+//    If YES -> Start Flow.
+//    If NO -> Send to AI (Groq).
+
+// However, the current requirement implies the bot ALWAYS starts the flow on first contact.
+// So AI should probably be an option IN the flow (e.g., "Falar com IA") OR handling unknown inputs in a Menu.
+
+// Let's stick to the plan: "Fallback".
+// If the user sends a message and we are NOT in a flow (session ended),
+// INSTEAD of restarting the flow immediately, we can check with AI.
+// BUT, `server.js` lines 235-252 unconditionally start the flow for new sessions.
+
+// Modification:
+// We will import `getAiResponse` and Use it when:
+// A. The flow is NOT running (no session).
+// B. We define a flag or check to deciding whether to start flow or use AI.
+
 
 // Handle Poll Votes
 client.on('vote_update', async (vote) => {
