@@ -16,7 +16,6 @@ import { StartNode, ContentNode, MenuNode, DelayNode, ImageNode, VideoNode, Audi
 import DeletableEdge from './CustomEdges';
 import QRCodeModal from './QRCodeModal';
 import LeadsDashboard from './LeadsDashboard';
-import LeadsDashboard from './LeadsDashboard';
 import FinancialDashboard from './FinancialDashboard';
 import { API_URL } from '../config';
 
